@@ -246,6 +246,11 @@ class Pulsarr {
 		return regex.test(url);
 	}
 
+    isMAL(url){
+        var regex = new RegExp(".*myanimelist.net\/anime\/")
+
+        return regex.test(url);
+    }
     extractIMDBID(url) {
         var regex = new RegExp("\/tt\\d{1,7}");
         var imdbid = regex.exec(url);
@@ -860,6 +865,83 @@ let loadFromTvdbUrl = async (url) => {
 	}
 }
 
+let loadFromMALUrl = async (url) => {
+	try {
+        let result = await $.ajax({url: url, datatype: "xml"});
+        let movieOrTV = $(result).find('[href="https://myanimelist.net/topanime.php?type=movie"]');
+        let animeMovie = false;
+        if(movieOrTV.text().trim() == "MovieMovie"){
+            console.log("IT'S A MOVIE");
+            animeMovie = true;
+        }
+        let titleObj = $(result).find(".h1-title").text().trim();
+        let titleObjEnglish = $(result).find(".title-english").text();
+        let animeTitle = titleObj;
+        let animeTitleBackup = "";
+        if(titleObjEnglish){
+            animeTitle = titleObj.substr(0,titleObj.length-titleObjEnglish.length);
+            animeTitleBackup = titleObjEnglish;
+            let animeTitleMinusSeason = animeTitle.toLowerCase().split("season");
+            if(animeTitleMinusSeason){
+                animeTitleBackup = animeTitle.substr(0,animeTitleMinusSeason[0].length-1);
+            }
+            animeTitleBackup = animeTitleBackup.replace("Second","");
+            animeTitleBackup = animeTitleBackup.replace("2nd","");
+            animeTitleBackup = animeTitleBackup.trim();
+    
+        }
+        let animeMinusSeason = animeTitle.toLowerCase().split("season");
+        if(animeMinusSeason){
+            animeTitle = animeTitle.substr(0,animeMinusSeason[0].length-1);
+        }
+        animeTitle = animeTitle.replace("Second","");
+        animeTitle = animeTitle.replace("2nd","");
+        animeTitle = animeTitle.trim();
+
+        console.log(animeTitle);
+        if(animeMovie == false){
+            let imdbid = await pulsarr.ImdbidFromTitle(animeTitle,0);
+            if(!imdbid){
+                imdbid = await pulsarr.ImdbidFromTitle(animeTitleBackup,0);
+            }    
+            let tvdbid = await pulsarr.TvdbidFromImdbid(imdbid);
+            let series = await sonarr.lookupSeries(tvdbid);
+            if(series) {
+                pulsarr.info(series);
+            }
+        }else{
+            let imdbid = await pulsarr.ImdbidFromTitle(animeTitle,1);
+            if(!imdbid){
+                imdbid = await pulsarr.ImdbidFromTitle(animeTitleBackup,1);
+            }
+			let movie = await radarr.lookupMovie(imdbid);
+			if (movie) {
+				pulsarr.info(movie);
+			}
+        }
+        /*let urlArray = url.split('/')
+        let anime_name;
+        if(urlArray.length>5){
+            anime_name = urlArray.slice(5).join('/').trim();
+            anime_name = anime_name.replace(/_/g, ' ');
+            console.log(anime_name);
+			let imdbid = await pulsarr.ImdbidFromTitle(anime_name,0);
+			let tvdbid = await pulsarr.TvdbidFromImdbid(imdbid);
+			let series = await sonarr.lookupSeries(tvdbid);
+            if(series) {
+                pulsarr.info(series);
+            }
+        }*/
+                //let series = await sonarr.lookupSeries(pulsarr.extractTVDBID(url));
+
+		//if (series) {
+		//	pulsarr.info(series);
+		//}
+	} catch (err) {
+		pulsarr.init(err);
+	}
+}
+
 let loadFromTraktUrl = async (url) => {
 	var regextv = new RegExp("trakt.tv\/shows\/");
 	var regexmov = new RegExp("trakt.tv\/movies\/");
@@ -967,7 +1049,9 @@ getCurrentTabUrl(async (url) => {
 	} else if (pulsarr.isRotten(url)) {
 		loadFromRottenUrl(url);
 	} else if (pulsarr.isTMB(url)) {
-		loadFromTMBUrl(url);
+        loadFromTMBUrl(url);
+    } else if (pulsarr.isMAL(url)) {
+        loadFromMALUrl(url);
     } else {
         pulsarr.info("Pulsarr does not recognise this as a valid website. Please check if that you are on either IMDB or TVDB.");
     }

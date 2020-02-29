@@ -4,6 +4,7 @@ Pulsarr
 Browser extension (currently [Chrome](https://chrome.google.com/webstore/detail/pulsarr/dcildkalkckjjdfpgagmnbbfooogopkd) & [Firefox](https://addons.mozilla.org/firefox/addon/ffpulsarr)) for adding movies to Radarr or Series' to Sonarr while browsing IMDB or TVDB.
 
 ## What's New
+- MyAnimeList.net support
 - Bug fixes and code cleanup
 
 ## Current features
